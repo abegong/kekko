@@ -133,6 +133,11 @@ class Game(object):
                 self.game_state['current_card'] = {}
 
     def take_action(self, verbosity=0):
+        """Figure out the next action to take, then resolve it.
+
+        It does not update any game state itself---all of that code is delegated to _resolve_action.
+        This method is primraily useful when running in simulation mode, not client-server mode.
+        """
         logging.info("Game.take_action")
 
         #If there is no current card,
