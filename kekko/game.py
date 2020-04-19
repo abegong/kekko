@@ -72,6 +72,12 @@ class Game(object):
         }
     
     def _resolve_action(self, kekko, current_player_id, verbosity=0):
+        self.history.append({
+            'game_state' : copy.deepcopy(self.game_state),
+            'strategy' : self.strategies[current_player_id].__name__,
+            'kekko' : kekko,
+        })
+
         if kekko and self.game_state['players'][current_player_id]['tokens'] > 0:
             #Decrement personal tokens
             self.game_state['players'][current_player_id]['tokens'] -= 1
@@ -139,13 +145,7 @@ class Game(object):
             return
 
         current_player_id = self.game_state['current_card']['player_id']
-
         kekko = self.strategies[current_player_id](self.game_state)
-        self.history.append({
-            'game_state' : copy.deepcopy(self.game_state),
-            'strategy' : self.strategies[current_player_id].__name__,
-            'kekko' : kekko,
-        })
 
         self._resolve_action(kekko, current_player_id, verbosity)
 
