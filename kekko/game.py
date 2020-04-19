@@ -1,4 +1,6 @@
 import random
+import copy
+import logging
 
 from .strategies import rand_strat_50
 
@@ -20,6 +22,7 @@ game_state : {
 class Game(object):
 
     def __init__(self, num_players=5, strategies=None):
+        logging.info("Game.__init__")
         if strategies:
             self.strategies = strategies
             self.num_players = self.strategies
@@ -29,8 +32,6 @@ class Game(object):
                 self.strategies = [rand_strat_50 for i in range(num_players)]
             else:
                 raise ValueError("num_players and strategies cannot bot be None")
-
-
 
         # self.strategies = [p["strategy"] for p in players]
 
@@ -43,12 +44,14 @@ class Game(object):
 
 
     def init_deck(self):
-        self.deck = list(range(3,36))
+        logging.info("Game.init_deck")
+
+        self.deck = list(range(2,36))
         random.shuffle(self.deck)
-        self.deck = self.deck[:-9]
+        self.deck = self.deck[:-6]
 
     def init_game_state(self):
-        
+        logging.info("Game.init_game_state")
 
         players = [{
             'name' : "Player "+str(i),#self.players[i]["name"],
@@ -67,25 +70,8 @@ class Game(object):
             'players' : players,
             'cards_remaining' : len(self.deck),
         }
-
-    def take_action(self, verbosity=0):
-        #If there is no current card,
-        if self.game_state['current_card'] == {}:
-            #...set the final score for the game...
-            self.final_score = self.score_game()
-
-            #...and exit without taking any action
-            return
-
-        current_player_id = self.game_state['current_card']['player_id']
-
-        kekko = self.players[current_player_id]["strategy"](self.game_state)
-        self.history.append({
-            'game_state' : copy.deepcopy(self.game_state),
-            'strategy' : self.players[current_player_id]["strategy"].__name__,
-            'kekko' : kekko,
-        })
-
+    
+    def _resolve_action(self, kekko, current_player_id, verbosity=0):
         if kekko and self.game_state['players'][current_player_id]['tokens'] > 0:
             #Decrement personal tokens
             self.game_state['players'][current_player_id]['tokens'] -= 1
@@ -107,7 +93,7 @@ class Game(object):
             self.game_state['current_card'] = {
                 'val' : self.game_state['current_card']['val'],
                 'tokens' : self.game_state['current_card']['tokens']+1,
-                'player_id' : (current_player_id+1) % len(self.players),
+                'player_id' : (current_player_id+1) % self.num_players,
             }
 
         else:
@@ -140,6 +126,31 @@ class Game(object):
             else :
                 self.game_state['current_card'] = {}
 
+    def take_action(self, verbosity=0):
+        logging.info("Game.take_action")
+
+        #If there is no current card,
+        if self.game_state['current_card'] == {}:
+            logging.info("No current card")
+            #...set the final score for the game...
+            self.final_score = self.score_game()
+
+            #...and exit without taking any action
+            return
+
+        current_player_id = self.game_state['current_card']['player_id']
+
+        kekko = self.strategies[current_player_id](self.game_state)
+        self.history.append({
+            'game_state' : copy.deepcopy(self.game_state),
+            'strategy' : self.strategies[current_player_id].__name__,
+            'kekko' : kekko,
+        })
+
+        self._resolve_action(kekko, current_player_id, verbosity)
+
+        return self.get_game_state()
+
     def score_game(self):
         scores = []
 
@@ -157,4 +168,11 @@ class Game(object):
         return scores
 
     def get_game_state(self):
+        logging.info("Game.get_game_state")
+
         return self.game_state
+
+    def get_history(self):
+        logging.info("Game.get_history")
+
+        return self.history

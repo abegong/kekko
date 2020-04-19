@@ -1,3 +1,5 @@
+import random
+
 ### Strategies ###
 
 def rand_strat_50(game_state):
@@ -212,4 +214,4 @@ def jag_3(game_state):
 
     return choice
 
-import cbg
+# import cbg
