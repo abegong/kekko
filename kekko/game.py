@@ -24,19 +24,10 @@ class Game(object):
     def __init__(self, num_players=5, strategies=None, db=None):
         logging.info("Game.__init__")
 
-        if strategies:
-            self.strategies = strategies
-            self.num_players = self.strategies
-        else:
-            if num_players:
-                self.num_players = num_players
-                self.strategies = [rand_strat_50 for i in range(num_players)]
-            else:
-                raise ValueError("num_players and strategies cannot bot be None")
-
         self.db = db
 
         self.init_deck()
+        self.init_players(num_players, strategies)
         self.init_game_state()
 
         self.history = []
@@ -56,6 +47,27 @@ class Game(object):
             )
             result = self.db.execute(query)
             self._id = result.fetchone()[0]
+
+    def init_players(self, num_players=5, strategies=None):
+        if strategies:
+            self.strategies = strategies
+            self.num_players = self.strategies
+
+        else:
+            if num_players:
+                self.num_players = num_players
+                self.strategies = [rand_strat_50 for i in range(num_players)]
+            else:
+                raise ValueError("num_players and strategies cannot bot be None")
+        
+        if self.db:
+            values_strings = ["(%d, 'NAME', NULL, %d )""" % (self._id, i) for i in range(self.num_players)]
+            values_string = ",".join(values_strings)
+            query = "INSERT INTO game_players (game_id, player_name, strategy_id, order_val) VALUES " + values_string + "RETURNING id;"
+
+            result = self.db.execute(query)
+            self._player_ids = print([r[0] for r in result.fetchall()])
+
 
     def init_game_state(self):
         logging.info("Game.init_game_state")
