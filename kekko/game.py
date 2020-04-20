@@ -66,7 +66,7 @@ class Game(object):
             query = "INSERT INTO game_players (game_id, player_name, strategy_id, order_val) VALUES " + values_string + "RETURNING id;"
 
             result = self.db.execute(query)
-            self._player_ids = print([r[0] for r in result.fetchall()])
+            self._player_ids = [r[0] for r in result.fetchall()]
 
 
     def init_game_state(self):
@@ -89,7 +89,38 @@ class Game(object):
             'players' : players,
             'cards_remaining' : len(self.deck),
         }
-    
+
+        if self.db:
+            query = """
+            INSERT INTO game_states
+                (game_id, cards_remaining, card_value, player_index, tokens) VALUES
+                (%d, %d, %d, %d, %d)
+            RETURNING id;""" % (
+                self._id,
+                self.game_state["cards_remaining"],
+                self.game_state["current_card"]["val"],
+                self.game_state["current_card"]["player_id"],
+                self.game_state["current_card"]["tokens"],
+            )
+
+            result = self.db.execute(query)
+            new_game_state_id = result.fetchall()[0][0]
+
+            values_strings = ["(%d, %d, %d, ARRAY%s::INTEGER[] )""" % (
+                new_game_state_id,
+                self._player_ids[0],
+                self.game_state["players"][i]["tokens"],
+                str(self.game_state["players"][i]["cards"])
+            ) for i in range(self.num_players)]
+            values_string = ",".join(values_strings)
+            query = """
+            INSERT INTO game_state_players
+                (game_state_id, game_player_id, tokens, cards) VALUES
+                %s
+            RETURNING id;""" % (values_string,)
+            print(query)
+            result = self.db.execute(query)
+
     def _resolve_action(self, kekko, current_player_id, verbosity=0):
         self.history.append({
             'game_state' : copy.deepcopy(self.game_state),

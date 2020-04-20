@@ -73,7 +73,13 @@ def test_db():
 
     G = kekko.Game(db=engine)
     assert engine.execute("SELECT COUNT(*) FROM games;").fetchone()[0] == 1
+    assert engine.execute("SELECT COUNT(*) FROM game_players;").fetchone()[0] == 5
     
+
+    # Starting a second game shouldn't cause problems
+    G2 = kekko.Game(db=engine)
+    assert engine.execute("SELECT COUNT(*) FROM games;").fetchone()[0] == 2
+    assert engine.execute("SELECT COUNT(*) FROM game_players;").fetchone()[0] == 10
 
     # assert engine.execute("SELECT COUNT(*) FROM game_states;").fetchone()[0] == 0
     # game_state = G.take_action()

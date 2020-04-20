@@ -31,8 +31,8 @@ CREATE TABLE game_players(
 );
 CREATE TABLE game_states(
 	id SERIAL PRIMARY KEY,
-	games SERIAL REFERENCES games(id),
-	turn_number INT,
+	game_id SERIAL REFERENCES games(id),
+	cards_remaining INT,
 	card_value INT,
 	player_index INT,
 	tokens INT
