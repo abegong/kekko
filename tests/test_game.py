@@ -3,6 +3,8 @@ import os
 import random
 import json
 import sqlalchemy as sa
+import logging
+logging.basicConfig(level=logging.WARNING)
 
 import kekko
 
@@ -52,14 +54,18 @@ def test_take_action():
         print(json.dumps(game_state["current_card"], indent=2))
 
     # The game must eventually end
+    steps = 0
     while True:
         game_state = G.take_action()
         if game_state == None:
             break
 
+        steps += 1
+        if steps > 300:
+            assert False
 
 def test_db():
-    random.seed(1)
+    # random.seed(1)
 
     # engine = sa.create_engine('sqlite:///:memory:', echo=True)
     engine = sa.create_engine('postgresql://postgres@localhost/kekko')#, echo=True)
@@ -70,24 +76,29 @@ def test_db():
         engine.execute(create_tables_query)
     assert engine.execute("SELECT COUNT(*) FROM games;").fetchone()[0] == 0
 
-
     G = kekko.Game(db=engine)
     assert engine.execute("SELECT COUNT(*) FROM games;").fetchone()[0] == 1
     assert engine.execute("SELECT COUNT(*) FROM game_players;").fetchone()[0] == 5
-    
+
+    assert engine.execute("SELECT COUNT(*) FROM game_states;").fetchone()[0] == 1
+    game_state = G.take_action()
+    assert engine.execute("SELECT COUNT(*) FROM game_states;").fetchone()[0] == 2
 
     # Starting a second game shouldn't cause problems
     G2 = kekko.Game(db=engine)
     assert engine.execute("SELECT COUNT(*) FROM games;").fetchone()[0] == 2
     assert engine.execute("SELECT COUNT(*) FROM game_players;").fetchone()[0] == 10
 
-    # assert engine.execute("SELECT COUNT(*) FROM game_states;").fetchone()[0] == 0
-    # game_state = G.take_action()
-    # assert engine.execute("SELECT COUNT(*) FROM game_states;").fetchone()[0] == 1
+    # The game must eventually end
+    steps = 0
+    while True:
+        game_state = G.take_action()
+        if game_state == None:
+            break
+        else:
+            print(game_state)
 
-
-    # # The game must eventually end
-    # while True:
-    #     game_state = G.take_action()
-    #     if game_state == None:
-    #         break
+        steps += 1
+        if steps > 200:
+            break
+        print(steps)

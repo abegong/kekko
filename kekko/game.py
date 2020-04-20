@@ -91,35 +91,40 @@ class Game(object):
         }
 
         if self.db:
-            query = """
-            INSERT INTO game_states
-                (game_id, cards_remaining, card_value, player_index, tokens) VALUES
-                (%d, %d, %d, %d, %d)
-            RETURNING id;""" % (
-                self._id,
-                self.game_state["cards_remaining"],
-                self.game_state["current_card"]["val"],
-                self.game_state["current_card"]["player_id"],
-                self.game_state["current_card"]["tokens"],
-            )
+            self.write_game_state(self.game_state)
+    
+    def write_game_state(self, game_state):
 
-            result = self.db.execute(query)
-            new_game_state_id = result.fetchall()[0][0]
+        query = """
+        INSERT INTO game_states
+            (game_id, cards_remaining, card_value, player_index, tokens) VALUES
+            (%d, %d, %d, %d, %d)
+        RETURNING id;""" % (
+            self._id,
+            game_state["cards_remaining"],
+            game_state["current_card"]["val"],
+            game_state["current_card"]["player_id"],
+            game_state["current_card"]["tokens"],
+        )
 
-            values_strings = ["(%d, %d, %d, ARRAY%s::INTEGER[] )""" % (
-                new_game_state_id,
-                self._player_ids[0],
-                self.game_state["players"][i]["tokens"],
-                str(self.game_state["players"][i]["cards"])
-            ) for i in range(self.num_players)]
-            values_string = ",".join(values_strings)
-            query = """
-            INSERT INTO game_state_players
-                (game_state_id, game_player_id, tokens, cards) VALUES
-                %s
-            RETURNING id;""" % (values_string,)
-            print(query)
-            result = self.db.execute(query)
+        result = self.db.execute(query)
+        new_game_state_id = result.fetchall()[0][0]
+        
+        values_strings = ["(%d, %d, %d, ARRAY%s::INTEGER[] )""" % (
+            new_game_state_id,
+            self._player_ids[0],
+            game_state["players"][i]["tokens"],
+            str(game_state["players"][i]["cards"])
+        ) for i in range(self.num_players)]
+        values_string = ",".join(values_strings)
+        query = """
+        INSERT INTO game_state_players
+            (game_state_id, game_player_id, tokens, cards) VALUES
+            %s
+        RETURNING id;""" % (values_string,)
+        result = self.db.execute(query)
+
+        self.current_game_state_id = new_game_state_id
 
     def _resolve_action(self, kekko, current_player_id, verbosity=0):
         self.history.append({
@@ -180,7 +185,13 @@ class Game(object):
                 self.game_state['cards_remaining'] = len(self.deck)
 
             else :
-                self.game_state['current_card'] = {}
+                self.game_state['current_card'] = {
+                    'val' : -1,
+                    'tokens' : -1,
+                    'player_id' : -1,
+                }
+        
+        return self.game_state
 
     def take_action(self, verbosity=0):
         """Figure out the next action to take, then resolve it.
@@ -202,7 +213,23 @@ class Game(object):
         current_player_id = self.game_state['current_card']['player_id']
         kekko = self.strategies[current_player_id](self.game_state)
 
-        self._resolve_action(kekko, current_player_id, verbosity)
+        if self.db:
+            query = """
+            INSERT INTO game_state_decisions
+                (game_state_id, kekko) VALUES
+                (%d, %s)
+            RETURNING id;""" % (
+                self.current_game_state_id,
+                str(kekko)
+            )
+            result = self.db.execute(query)
+            result.close()
+
+        new_game_state = self._resolve_action(kekko, current_player_id, verbosity)
+        print(new_game_state)
+
+        if self.db:
+            self.write_game_state(new_game_state)
 
         return self.get_game_state()
 
@@ -224,6 +251,9 @@ class Game(object):
 
     def get_game_state(self):
         logging.info("Game.get_game_state")
+
+        if self.game_state["cards_remaining"] == 0 and self.game_state["current_card"]["val"] == -1:
+            return None
 
         return self.game_state
 
