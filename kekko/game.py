@@ -21,8 +21,9 @@ game_state : {
 
 class Game(object):
 
-    def __init__(self, num_players=5, strategies=None):
+    def __init__(self, num_players=5, strategies=None, db=None):
         logging.info("Game.__init__")
+
         if strategies:
             self.strategies = strategies
             self.num_players = self.strategies
@@ -33,10 +34,9 @@ class Game(object):
             else:
                 raise ValueError("num_players and strategies cannot bot be None")
 
-        # self.strategies = [p["strategy"] for p in players]
+        self.db = db
 
         self.init_deck()
-        
         self.init_game_state()
 
         self.history = []
@@ -49,6 +49,13 @@ class Game(object):
         self.deck = list(range(2,36))
         random.shuffle(self.deck)
         self.deck = self.deck[:-6]
+
+        if self.db:
+            query = """INSERT INTO games (game_name, deck) VALUES ('hello', ARRAY[%s]) RETURNING id;""" % (
+                ",".join([str(card) for card in self.deck])
+            )
+            result = self.db.execute(query)
+            self._id = result.fetchone()[0]
 
     def init_game_state(self):
         logging.info("Game.init_game_state")

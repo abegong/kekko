@@ -18,7 +18,8 @@ CREATE TABLE strategies(
 -- );
 CREATE TABLE games(
 	id SERIAL NOT NULL PRIMARY KEY,
-	game_name TEXT
+	game_name TEXT,
+	deck INT[]
 	-- created_at INTEGER NOT NULL DEFAULT NOW()
 );
 CREATE TABLE game_players(

@@ -2,6 +2,7 @@ import pytest
 import os
 import random
 import json
+import sqlalchemy as sa
 
 import kekko
 
@@ -57,12 +58,30 @@ def test_take_action():
             break
 
 
+def test_db():
+    random.seed(1)
 
-    # game_state = G.take_action()
-    # print(json.dumps(game_state, indent=2))
+    # engine = sa.create_engine('sqlite:///:memory:', echo=True)
+    engine = sa.create_engine('postgresql://postgres@localhost/kekko')#, echo=True)
+
+    # Clear out the DB
+    with open("db/create_tables.sql") as f_:
+        create_tables_query = f_.read()
+        engine.execute(create_tables_query)
+    assert engine.execute("SELECT COUNT(*) FROM games;").fetchone()[0] == 0
+
+
+    G = kekko.Game(db=engine)
+    assert engine.execute("SELECT COUNT(*) FROM games;").fetchone()[0] == 1
     
+
+    # assert engine.execute("SELECT COUNT(*) FROM game_states;").fetchone()[0] == 0
     # game_state = G.take_action()
-    # print(json.dumps(game_state, indent=2))
-    
-    # game_state = G.take_action()
-    # print(json.dumps(game_state, indent=2))
+    # assert engine.execute("SELECT COUNT(*) FROM game_states;").fetchone()[0] == 1
+
+
+    # # The game must eventually end
+    # while True:
+    #     game_state = G.take_action()
+    #     if game_state == None:
+    #         break
